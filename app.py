@@ -42,7 +42,7 @@ if prompt := st.chat_input("How can Claude help you today?"):
 
     with st.chat_message("assistant"):
         resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+               model="groq/compound",
             messages=[{"role": "user", "content": full_prompt}]
         )
         ans = resp.choices[0].message.content
