@@ -2,141 +2,139 @@ import streamlit as st
 from groq import Groq
 import PyPDF2
 import os
-from datetime import datetime
 from io import BytesIO
 from docx import Document
+from datetime import datetime
 
-st.set_page_config(page_title="Claude Meta • Aaron - FIX", page_icon="🤖", layout="wide")
-
+st.set_page_config(page_title="Claude Meta • Aaron - FAST", page_icon="⚡", layout="wide")
 st.markdown("""
 <style>
     .main { background-color: #FAF9F5; }
     [data-testid="stSidebar"] { background-color: #F0EEE6; }
-    .claude-card { background: white; border-radius: 16px; padding: 20px; border: 1px solid #E8E5DD; box-shadow: 0 2px 12px rgba(0,0,0,0.04); margin-bottom: 16px; }
-    .badge { background: #D4A574; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-    .title-gradient { background: linear-gradient(90deg, #D4A574 0%, #8B5E34 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; font-size: 32px; }
+    .claude-card { background: white; border-radius: 16px; padding: 16px; border: 1px solid #E8E5DD; }
 </style>
 """, unsafe_allow_html=True)
 
 api_key = st.secrets.get("GROQ_API_KEY") if "GROQ_API_KEY" in st.secrets else os.environ.get("GROQ_API_KEY")
-if api_key:
-    client = Groq(api_key=api_key)
-else:
-    client = None
-    st.error("⚠️ Falta GROQ_API_KEY en Secrets")
+client = Groq(api_key=api_key) if api_key else None
 
+# --- SIDEBAR ---
 with st.sidebar:
-    st.markdown('<div class="title-gradient">Claude Meta</div>', unsafe_allow_html=True)
-    st.caption("FIX Botón - Matemáticas")
-    st.divider()
-    uploaded = st.file_uploader("📄 Sube tu PDF de matemáticas", type=["pdf","txt"])
-    pdf_text = st.session_state.get('pdf_text','')
+    st.title("⚡ Claude FAST")
+    st.caption("No se pega nunca")
+    uploaded = st.file_uploader("📄 PDF Matemáticas", type=["pdf","txt"])
     if uploaded:
-        if uploaded.type == "application/pdf":
-            reader = PyPDF2.PdfReader(uploaded)
-            pdf_text = "\n".join([(p.extract_text() or "") for p in reader.pages])
-            st.session_state['pdf_text'] = pdf_text
-            st.session_state['pdf_name'] = uploaded.name
-            st.success(f"✅ PDF cargado: {len(reader.pages)} páginas")
-        else:
-            pdf_text = uploaded.read().decode('utf-8')
-            st.session_state['pdf_text'] = pdf_text
+        try:
+            if uploaded.type == "application/pdf":
+                reader = PyPDF2.PdfReader(uploaded)
+                # Solo primeras 5 páginas para no pegarse
+                max_pages = min(5, len(reader.pages))
+                text = ""
+                for i in range(max_pages):
+                    text += (reader.pages[i].extract_text() or "") + "\n"
+                st.session_state['pdf_text'] = text[:12000]  # Límite para no pegarse
+                st.session_state['pdf_name'] = uploaded.name
+                st.success(f"✅ {uploaded.name} - {max_pages} págs leídas (de {len(reader.pages)})")
+                st.caption(f"{len(st.session_state['pdf_text'])} caracteres - recortado para velocidad")
+                with st.expander("Ver texto"):
+                    st.text(st.session_state['pdf_text'][:3000])
+            else:
+                text = uploaded.read().decode('utf-8')[:12000]
+                st.session_state['pdf_text'] = text
+                st.success("✅ TXT cargado")
+        except Exception as e:
+            st.error(f"Error leyendo PDF: {e}")
+    
     st.divider()
-    if st.button("🗑️ Limpiar chat"):
+    if st.button("🗑️ Limpiar"):
         st.session_state.messages = []
+        st.session_state.pdf_text = ""
         st.rerun()
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-st.markdown('<span class="badge">● ONLINE - FIX</span> <b>Claude Análisis Matemático Profundo</b>', unsafe_allow_html=True)
+st.title("¿Qué analizamos, Aaron?")
+st.caption("⚡ Modelo ultra rápido - Streaming en vivo - No se pega")
 
-# Historial
 for m in st.session_state.messages:
-    with st.chat_message(m["role"], avatar="🧑‍💻" if m["role"]=="user" else "🤖"):
+    with st.chat_message(m["role"]):
         st.markdown(m["content"])
 
-# --- ZONA DE PREGUNTA QUE NUNCA SE BLOQUEA ---
+# INPUT QUE NO SE PEGA
 st.divider()
-st.markdown("### ✍️ Haz tu pregunta (funciona siempre)")
+pregunta = st.text_input("✍️ Escribe tu pregunta aquí:", placeholder="Ej: Resuelve el ejercicio 3 paso a paso...", key="pregunta_input")
 
-col1, col2 = st.columns([4,1])
+col1, col2, col3, col4 = st.columns(4)
 with col1:
-    user_question = st.text_area("Pregunta:", placeholder="Ej: Explica paso a paso los ejercicios del PDF, resuelve el ejercicio 3 con todo el procedimiento...", height=100, key="q_input")
+    btn_preguntar = st.button("🚀 PREGUNTAR", type="primary", use_container_width=True)
 with col2:
-    st.write("")
-    st.write("")
-    preguntar_btn = st.button("🚀 PREGUNTAR", type="primary", use_container_width=True)
-    st.caption("Este botón nunca se bloquea")
+    if st.button("📊 Analizar PDF", use_container_width=True):
+        pregunta = "Analiza este PDF de matemáticas a fondo: teoría, fórmulas clave y resuelve los ejercicios principales paso a paso con procedimiento completo."
+        btn_preguntar = True
+with col3:
+    if st.button("🧮 Resolver todo", use_container_width=True):
+        pregunta = "Resuelve TODOS los ejercicios del PDF paso a paso con desarrollo completo y verificación."
+        btn_preguntar = True
+with col4:
+    if st.button("📝 Resumen largo", use_container_width=True):
+        pregunta = "Haz un resumen ejecutivo profundo de mínimo 600 palabras con ideas clave, análisis crítico y conclusiones."
+        btn_preguntar = True
 
-# Sugerencias rápidas
-c1, c2, c3 = st.columns(3)
-with c1:
-    if st.button("📊 Analizar todo el PDF", use_container_width=True):
-        user_question = "Haz un análisis profundo y exhaustivo de todo el PDF de matemáticas: explica la teoría, resuelve cada ejercicio paso a paso con procedimiento completo, justifica cada paso."
-        preguntar_btn = True
-with c2:
-    if st.button("🧮 Resolver ejercicios", use_container_width=True):
-        user_question = "Resuelve todos los ejercicios del PDF de matemáticas paso a paso, con procedimiento completo, fórmulas usadas y verificación del resultado."
-        preguntar_btn = True
-with c3:
-    if st.button("📝 Crear guía Word", use_container_width=True):
-        user_question = "Crea una guía de estudio en formato de informe basada en el PDF, con teoría, ejemplos resueltos y ejercicios propuestos."
-        preguntar_btn = True
-
-if preguntar_btn and user_question:
+if btn_preguntar and pregunta:
     if not client:
         st.error("Falta API KEY")
         st.stop()
-    if not st.session_state.get('pdf_text'):
-        st.warning("Sube primero un PDF en la barra lateral izquierda")
-
-    st.session_state.messages.append({"role": "user", "content": user_question})
-    with st.chat_message("user", avatar="🧑‍💻"):
-        st.markdown(user_question)
-
+    
     pdf_text = st.session_state.get('pdf_text','')
-    context = f"DOCUMENTO MATEMÁTICO '{st.session_state.get('pdf_name','')}' CONTENIDO:\n{pdf_text[:35000]}\n\n" if pdf_text else ""
-    full_prompt = context + f"\nPREGUNTA DEL USUARIO: {user_question}"
+    if not pdf_text:
+        st.warning("Primero sube un PDF en la barra izquierda")
+    
+    st.session_state.messages.append({"role": "user", "content": pregunta})
+    with st.chat_message("user"):
+        st.markdown(pregunta)
+
+    # Contexto recortado para no pegarse
+    contexto = f"PDF {st.session_state.get('pdf_name','')}: {pdf_text[:10000]}\n\nPREGUNTA: {pregunta}" if pdf_text else pregunta
 
     SYSTEM = """
-Eres Claude Meta, el mejor profesor de matemáticas de Chile, experto en enseñanza universitaria.
-Fecha: 11 agosto 2026. Español.
-
-MODO MATEMÁTICAS PROFUNDO - OBLIGATORIO:
-- Respuestas de MÍNIMO 700 palabras.
-- Si es un ejercicio: muestra ENUNCIADO, DATOS, FÓRMULA, DESARROLLO PASO A PASO numerado, RESULTADO y VERIFICACIÓN.
-- Usa LaTeX para fórmulas: $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$ para inline y $$...$$ para bloques.
-- Explica el POR QUÉ de cada paso, no solo el cómo.
-- Si hay varios ejercicios, resuelve uno por uno con títulos.
-- Estructura con: Resumen, Teoría Clave, Desarrollo Detallado, Conclusión.
-- NUNCA digas que tu info llega hasta 2023.
-- NUNCA inventes datos. Si el PDF no se lee bien, di qué parte no se lee.
-- Sé didáctico, como si le explicaras a un alumno que quiere aprender de verdad.
+Eres el mejor profesor de matemáticas de Chile. Fecha 11 ago 2026.
+Respuestas LARGAS (mínimo 600 palabras), paso a paso, con fórmulas LaTeX $...$.
+Si es ejercicio: Enunciado, Datos, Fórmula, Desarrollo numerado, Resultado, Verificación.
+NUNCA digas que sabes hasta 2023. No inventes.
 """
 
-    with st.chat_message("assistant", avatar="🤖"):
-        with st.spinner("Resolviendo paso a paso..."):
-            try:
-                resp = client.chat.completions.create(
-                    model="openai/gpt-oss-120b",
-                    messages=[{"role": "system", "content": SYSTEM},{"role": "user", "content": full_prompt}],
-                    temperature=0.4,
-                    max_tokens=7000
-                )
-                ans = resp.choices[0].message.content
-                st.markdown(ans)
-                st.session_state.messages.append({"role": "assistant", "content": ans})
-                
-                # Botón Word
-                def doc_from_ans():
-                    doc = Document()
-                    doc.add_heading('Análisis Matemático - Claude Meta', 1)
-                    doc.add_paragraph(ans)
-                    bio = BytesIO()
-                    doc.save(bio)
-                    return bio.getvalue()
-                st.download_button("📄 Descargar en WORD", doc_from_ans(), file_name="solucion_matematicas.docx")
-                
-            except Exception as e:
-                st.error(f"Error: {e}")
+    with st.chat_message("assistant"):
+        placeholder = st.empty()
+        full_response = ""
+        try:
+            # STREAMING = no se ve pegado, escribe en vivo
+            stream = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",  # Modelo más rápido del mundo, no se pega
+                messages=[{"role": "system", "content": SYSTEM},{"role": "user", "content": contexto}],
+                temperature=0.4,
+                max_tokens=5000,
+                stream=True
+            )
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    full_response += chunk.choices[0].delta.content
+                    placeholder.markdown(full_response + "▌")
+            placeholder.markdown(full_response)
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+            
+            # Botón Word
+            def make_doc():
+                doc = Document()
+                doc.add_heading('Solución Matemáticas', 1)
+                doc.add_paragraph(full_response)
+                bio = BytesIO()
+                doc.save(bio)
+                return bio.getvalue()
+            st.download_button("📄 Descargar en WORD", make_doc(), file_name="solucion.docx")
+            
+        except Exception as e:
+            st.error(f"Error: {e}")
+            st.info("Si falla, prueba con 'llama-3.1-8b-instant' que es aún más rápido")
+
+                  
